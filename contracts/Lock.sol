@@ -1,34 +1,25 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.9;
 
-// Uncomment this line to use console.log
-// import "hardhat/console.sol";
-
 contract Lock {
-    uint public unlockTime;
+    uint256 public collateralCost;
     address payable public owner;
-
+    uint private nr_collaterals = 0;
+    mapping(address => bool) payedCollateral;
+    mapping(address => bool) ecoCheckMade;
+    mapping(address => bool) ecoCheckFailedPast;
     event Withdrawal(uint amount, uint when);
 
-    constructor(uint _unlockTime) payable {
-        require(
-            block.timestamp < _unlockTime,
-            "Unlock time should be in the future"
-        );
+    constructor(uint256 cost) payable {
+        require(1 < cost, "Unlock time should be in the future");
 
-        unlockTime = _unlockTime;
+        collateralCost = cost;
         owner = payable(msg.sender);
     }
 
-    function withdraw() public {
-        // Uncomment this line, and the import of "hardhat/console.sol", to print a log in your terminal
-        // console.log("Unlock time is %o and block timestamp is %o", unlockTime, block.timestamp);
-
-        require(block.timestamp >= unlockTime, "You can't withdraw yet");
-        require(msg.sender == owner, "You aren't the owner");
-
-        emit Withdrawal(address(this).balance, block.timestamp);
-
-        owner.transfer(address(this).balance);
+    function payForCollateral() public payable {
+        require(msg.value == collateralCost, "Paying too much or too little");
+        payedCollateral[msg.sender] = true;
+        nr_collaterals++;
     }
 }
