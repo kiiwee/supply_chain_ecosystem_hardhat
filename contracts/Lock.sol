@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.9;
 
-contract Lock {
+contract CollateralContract {
     uint256 public collateralCost;
     address payable public owner;
     uint private nr_collaterals = 0;
@@ -11,8 +11,6 @@ contract Lock {
     event Withdrawal(uint amount, uint when);
 
     constructor(uint256 cost) payable {
-        require(1 < cost, "Unlock time should be in the future");
-
         collateralCost = cost;
         owner = payable(msg.sender);
     }
@@ -22,4 +20,15 @@ contract Lock {
         payedCollateral[msg.sender] = true;
         nr_collaterals++;
     }
+}
+
+contract PaymentsContract {
+    CollateralContract colcontract =CollateralContract();
+
+
+    constructor() {};
+
+    public function checkMap()  returns (bool) {
+        colcontract.payedCollateral(msg.msg.sender)
+    };
 }

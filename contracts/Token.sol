@@ -1,15 +1,17 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.9;
+pragma solidity ^0.8.9;
 // cid : bafybeifwrdj7ircxzaqkwzacdp3gkcamnhgawmflnyh7lccusd43niyvpu
 // IPDS URL : ipfs://bafybeifwrdj7ircxzaqkwzacdp3gkcamnhgawmflnyh7lccusd43niyvpu
 
 import "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC1155/extensions/ERC1155Burnable.sol";
 import "@openzeppelin/contracts/token/ERC1155/extensions/ERC1155Supply.sol";
+import "@openzeppelin/contracts/access/AccessControl.sol";
 
-contract MyToken is ERC1155, Ownable, ERC1155Burnable, ERC1155Supply {
-    uint256 public constant GOLD = 0;
+contract MyToken is ERC1155, AccessControl, ERC1155Burnable, ERC1155Supply {
+    bytes32 public constant URI_SETTER_ROLE = keccak256("URI_SETTER_ROLE");
+    bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
+
     uint256 public constant DENIMFABRIC = 1;
     uint256 public constant SIEGEBAND = 2;
     uint256 public constant ZIPPER = 3;
@@ -17,24 +19,34 @@ contract MyToken is ERC1155, Ownable, ERC1155Burnable, ERC1155Supply {
     uint256 public constant PATTERNPAPER = 5;
     uint256 public constant JEANSSEWED = 6;
 
+    function supportsInterface(
+        bytes4 interfaceId
+    ) public view virtual override(ERC1155, AccessControl) returns (bool) {
+        return super.supportsInterface(interfaceId);
+    }
+
     constructor()
         ERC1155(
             "ipfs://bafybeifwrdj7ircxzaqkwzacdp3gkcamnhgawmflnyh7lccusd43niyvpu/{id}.json"
         )
-    {}
+    {
+        _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
+        _grantRole(URI_SETTER_ROLE, msg.sender);
+        _grantRole(MINTER_ROLE, msg.sender);
+    }
 
-    function setURI(string memory newuri) public onlyOwner {
+    function setURI(string memory newuri) public onlyRole(URI_SETTER_ROLE) {
         _setURI(newuri);
     }
 
-    function mint(uint256 id, uint256 amount) public onlyOwner {
+    function mint(uint256 id, uint256 amount) public onlyRole(MINTER_ROLE) {
         _mint(msg.sender, id, amount, "");
     }
 
     function mintBatch(
         uint256[] memory ids,
         uint256[] memory amounts
-    ) public onlyOwner {
+    ) public onlyRole(MINTER_ROLE) {
         _mintBatch(msg.sender, ids, amounts, "");
     }
 
