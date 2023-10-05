@@ -3,12 +3,17 @@ pragma solidity ^0.8.9;
 // cid : bafybeifwrdj7ircxzaqkwzacdp3gkcamnhgawmflnyh7lccusd43niyvpu
 // IPDS URL : ipfs://bafybeifwrdj7ircxzaqkwzacdp3gkcamnhgawmflnyh7lccusd43niyvpu
 
-import "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
+import "@openzeppelin/contracts/token/ERC1155/extensions/ERC1155URIStorage.sol";
 import "@openzeppelin/contracts/token/ERC1155/extensions/ERC1155Burnable.sol";
 import "@openzeppelin/contracts/token/ERC1155/extensions/ERC1155Supply.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 
-contract MyToken is ERC1155, AccessControl, ERC1155Burnable, ERC1155Supply {
+contract MyToken is
+    ERC1155URIStorage,
+    AccessControl,
+    ERC1155Burnable,
+    ERC1155Supply
+{
     bytes32 public constant URI_SETTER_ROLE = keccak256("URI_SETTER_ROLE");
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
 
@@ -35,12 +40,26 @@ contract MyToken is ERC1155, AccessControl, ERC1155Burnable, ERC1155Supply {
         _grantRole(MINTER_ROLE, msg.sender);
     }
 
-    function setURI(string memory newuri) public onlyRole(URI_SETTER_ROLE) {
-        _setURI(newuri);
+    function uri_set_mint(
+        uint256 id,
+        uint256 amount,
+        string memory tokenURI
+    ) public onlyRole(MINTER_ROLE) {
+        ERC1155URIStorage._setURI(id, tokenURI);
+        _mint(msg.sender, id, amount, "");
     }
 
-    function mint(uint256 id, uint256 amount) public onlyRole(MINTER_ROLE) {
+    function normal_mint(
+        uint256 id,
+        uint256 amount
+    ) public onlyRole(MINTER_ROLE) {
         _mint(msg.sender, id, amount, "");
+    }
+
+    function uri(
+        uint256 tokenId
+    ) public view override(ERC1155, ERC1155URIStorage) returns (string memory) {
+        return ERC1155URIStorage.uri(tokenId);
     }
 
     function mintBatch(
