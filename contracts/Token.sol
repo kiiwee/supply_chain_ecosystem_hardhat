@@ -82,3 +82,128 @@ contract MyToken is
         super._beforeTokenTransfer(operator, from, to, ids, amounts, data);
     }
 }
+
+/**************************************** */
+
+contract CollateralContract {
+    uint256 public collateralCost;
+    address payable public owner;
+    uint private nr_collaterals = 0;
+
+    mapping(address => bool) public payedCollateral;
+
+    constructor(uint256 cost) payable {
+        collateralCost = cost;
+        owner = payable(msg.sender);
+    }
+
+    function payForCollateral() public payable {
+        require(msg.value == collateralCost, "Paying too much or too little");
+        payedCollateral[msg.sender] = true;
+        nr_collaterals++;
+    }
+
+    function payTo(address to, uint256 amount) public returns (bool) {
+        require(amount > 0, "Payment must be greater than zero!");
+        (bool success, ) = payable(to).call{value: amount}("");
+        require(success, "Payment failed");
+        return true;
+    }
+}
+
+contract ProductTransferContract is MyToken {
+    uint256 public rawMaterialCost;
+    address payable public owner;
+
+    //MyToken myToken = MyToken();
+    CollateralContract collateralContract;
+
+    constructor(uint256 cost, uint256 costCollateral) payable {
+        rawMaterialCost = cost;
+        collateralContract = new CollateralContract{value: costCollateral}(
+            costCollateral
+        ); // Deploy CollateralContract with value
+        // myToken = new MyToken();
+        owner = payable(msg.sender);
+    }
+
+    function expectRawMaterials(
+        address from,
+        uint256 productId,
+        uint256 howMuch
+    ) public payable returns (bool) {
+        require(
+            collateralContract.payedCollateral[from],
+            "The supplier has not paid the collateral"
+        ); // Check if the supplier (from) has paid the collateral.
+        normal_mint(productId, howMuch); // Mint the specified quantity of items.
+        _safeTransferFrom(from, msg.sender, productId, howMuch, ""); // Transfer the minted items from the supplier (from) to the manufacturer (msg.sender).
+        require(
+            collateralContract.payTo(from, rawMaterialCost),
+            "Payment to supplier failed"
+        ); // Make a payment to the supplier (from).
+
+        return true;
+    } //function supposedly called by the manufacturer ("from" is the address of the supplier)
+}
+
+contract PayAsCustomerContract is MyToken {
+    uint256 public productCost;
+    address payable public owner;
+    CollateralContract collateralContract = CollateralContract();
+
+    //ProductTransferContract productTransferContract = ProductTransferContract();
+
+    constructor(uint256 costCollateral) payable {
+        // productCost = cost;
+        // productTransferContract = new ProductTransferContract(rawProductCost,costCollateral);
+        owner = payable(msg.sender);
+        collateralContract = new CollateralContract(costCollateral);
+    }
+
+    function buyItem(
+        address from,
+        uint256 productId
+    ) public payable returns (bool) {
+        require(collateralContract.payTo(from, productCost), "Payment failed");
+        _safeTransferFrom(from, msg.sender, productId, 1, ""); // "1" becasue we transfer only one instance of the finalised product.
+
+        return true;
+    }
+}
+
+// contract ManagementContract is ProductTransferContract, PayAsCustomerContract {
+//     // You can add additional functions and variables specific to ManagementContract here.
+
+//     constructor(uint256 rawMaterialCost, uint256 productCost) {
+//         // Initialize the rawMaterialCost and productCost
+//         rawMaterialCost = rawMaterialCost;
+//         productCost = productCost;
+//     }
+
+//     function expectRawMaterials(
+//         address from,
+//         uint256 productId,
+//         uint256 howMuch
+//     ) public payable returns (bool) {
+//         require(
+//             payedCollateral[from],
+//             "The supplier has not paid the collateral"
+//         ); // Check if the supplier (from) has paid the collateral.
+//         normal_mint(productId, howMuch); // Mint the specified quantity of items.
+//         _safeTransferFrom(from, msg.sender, productId, howMuch, ""); // Transfer the minted items from the supplier (from) to the manufacturer (msg.sender).
+//         require(payTo(from, rawMaterialCost), "Payment to supplier failed"); // Make a payment to the supplier (from).
+
+//         return true;
+//     } //function supposedly called by the manufacturer ("from" is the address of the supplier)
+
+//     function buyItem(
+//         address from,
+//         uint256 productId
+//     ) public payable returns (bool) {
+//         require(payTo(from, productCost), "Payment failed");
+//         _safeTransferFrom(from, msg.sender, productId, 1, ""); // "1" becasue we transfer only one instance of the finalised product.
+
+//         return true;
+//     }
+// }
